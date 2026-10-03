@@ -11,7 +11,7 @@ CanvasAI is an infinite whiteboard that turns rough UI sketches into working HTM
 ## Stack
 - **Frontend:** Vite, React, TypeScript, Tailwind CSS v4
 - **Canvas:** tldraw (custom `html-component` shape)
-- **AI provider:** Groq (planned default, fast cloud inference) and Ollama (local, currently implemented). See [decisions.md](decisions.md).
+- **AI provider:** Groq (fast cloud inference, OpenAI-compatible API). See [decisions.md](decisions.md).
 
 ## Privacy note
-With Ollama, sketches never leave the machine. With a cloud provider (Groq), the exported sketch image is sent to that provider. The UI must say so when a cloud provider is selected.
+The exported sketch image is sent to Groq for inference. The UI should say so near the Generate button.

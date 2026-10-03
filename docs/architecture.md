@@ -14,23 +14,22 @@
 │  HtmlShapeUtil (src/shapes)  ◀──────────    stream HTML into shape props   │
 │     sandboxed iframe + Tailwind             │                              │
 │                                             ▼                              │
-│                                    src/lib/ollama.ts (provider client)     │
+│                                    src/lib/groq.ts (provider client)     │
 └─────────────────────────────────────────────┬──────────────────────────────┘
-                                              │  fetch('/ollama/...')  (same origin)
+                                              │  fetch('/groq/...')  (same origin)
                                               ▼
-                              Vite dev-server proxy  (vite.config.ts)
-                              rewrites path, (planned) injects API key
+                              Vite middleware (server/groqProxy.ts)
+                              injects API key, rotates on 429
                                               │
-                      ┌───────────────────────┴──────────────────────┐
-                      ▼                                              ▼
-              Ollama  localhost:11434                  Groq  api.groq.com (planned)
+                                              ▼
+                              Groq  api.groq.com/openai/v1
 ```
 
 ## Data flow
 1. **Draw** with standard tldraw tools.
 2. **Select & capture** – `editor.toImage(ids, { format: 'png', background: true, scale })`. The scale is chosen so the longest edge is ≤ 1024px (faster inference, smaller payload). The PNG is base64-encoded.
 3. **Placeholder** – an `html-component` shape (`status: 'generating'`) is created immediately to the right of the selection, so the user sees feedback at once (glowing border).
-4. **Inference** – the image plus a strict system prompt (UI engineer, Tailwind only, one `html` code block, no scripts/external resources) is sent through the proxy; the response is streamed.
+4. **Inference** – the image plus a strict system prompt (UI engineer, Tailwind only, one `html` code block, no scripts/external resources) is sent through the proxy as an OpenAI-style chat completion; the SSE response is streamed.
 5. **Parse & render** – tokens accumulate; `extractHtml` strips the markdown fence (tolerating an unclosed one while streaming). Shape props are updated at most every 300 ms so the iframe re-renders smoothly. On completion `status` becomes `done`; on failure `error`.
 
 ## Key modules
@@ -39,9 +38,10 @@
 |---|---|
 | `src/App.tsx` | Mounts tldraw, toolbar, abort control |
 | `src/lib/generate.ts` | Capture → placeholder → stream → update shape |
-| `src/lib/ollama.ts` | Provider client: list models, streaming generate, `extractHtml`, system prompt |
+| `src/lib/groq.ts` | Provider client: list models, streaming generate, `extractHtml`, system prompt |
 | `src/shapes/HtmlShape.tsx` | Custom shape: props schema, sandboxed iframe, status UI |
-| `vite.config.ts` | Dev/preview proxy to the AI provider |
+| `server/groqProxy.ts` | Vite plugin: forwards `/groq/*` to Groq, adds the key, retries on 429 with the next key |
+| `vite.config.ts` | Loads `GROQ_API_KEYS` (server-side only) and registers the proxy plugin |
 
 ## Custom shape: `html-component`
 Props: `w`, `h`, `html`, `status` (`idle | generating | done | error`), `error`. Extending `BaseBoxShapeUtil` gives drag, resize and selection for free.
@@ -51,19 +51,13 @@ Props: `w`, `h`, `html`, `status` (`idle | generating | done | error`), `error`.
 - Tailwind's browser build (`@tailwindcss/browser`) is inlined into the iframe `srcdoc`, so runtime-generated classes compile and nothing is fetched from a CDN.
 - The prompt forbids `<script>`, but the sandbox is the real defence, not the prompt.
 - The iframe has `pointer-events: none` unless the shape is being edited (double-click), otherwise it would swallow drags.
-- **API keys never ship to the browser.** The planned Groq key lives in `.env` and is added by the dev proxy. A public deployment would need a real backend to hold it.
+- **API keys never ship to the browser.** `GROQ_API_KEYS` (no `VITE_` prefix, which would inline it into the client bundle) is read by the Vite server and added by the proxy. A public deployment would need a real backend to do the same.
 
-## Provider abstraction (planned)
-```ts
-interface Provider {
-  listModels(signal?: AbortSignal): Promise<string[]>
-  generate(opts: { imageBase64: string; model: string; signal?: AbortSignal; onToken(acc: string): void }): Promise<string>
-}
-```
-Ollama: `POST /api/generate`, raw base64 in `images`, NDJSON stream.
-Groq: `POST /openai/v1/chat/completions`, `data:image/png;base64,…` in an `image_url` part, SSE stream.
+## Provider
+Groq: `POST /openai/v1/chat/completions` with the PNG as a `data:image/png;base64,…` `image_url` part, SSE stream. Models come from `GET /openai/v1/models`, filtered by name to likely vision models (Groq exposes no capability flag). The client lives behind two functions (`listModels`, `generateFromImage`), so another provider (e.g. local Ollama) can be added later without touching the canvas code.
 
 ## Known limitations
-- tldraw loads fonts/icons from its CDN by default (matters only if full offline use is a goal).
+- tldraw loads fonts/icons from its CDN by default.
+- The multi-key rotation only helps before a stream starts; a rate limit mid-stream surfaces as an error. Check Groq's terms before rotating keys from separate accounts.
 - No tests yet; the parsing/stream code is the highest-risk area.
 - Each streamed update may become its own undo step.

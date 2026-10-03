@@ -14,5 +14,8 @@ Short records of choices and why. Newest last.
 ## 4. Stream into a placeholder shape
 **Decision:** create the shape immediately and update it as tokens arrive (throttled to 300 ms). **Why:** vision models are slow; progressive rendering is better feedback than a spinner at the same cost.
 
-## 5. Move toward Groq as the default provider
-**Decision:** add a provider interface; make Groq the default and keep Ollama as optional. **Why:** running a vision model locally loads the user's machine; Groq is much faster and uses larger models. **Cost:** sketches are sent to a third party, so "100% local" no longer holds and the UI must disclose it. The API key is held by the proxy, never the browser. **Status:** Ollama implemented; Groq adapter planned.
+## 5. Groq instead of local Ollama
+**Decision:** use Groq for inference. **Why:** running a vision model locally loads the user's machine; Groq is much faster and uses larger models. **Cost:** sketches are sent to a third party, so "100% local" no longer holds and the UI should disclose it. **Status:** implemented; Ollama was removed (see git history) and can return behind the same two-function client.
+
+## 6. API keys stay server-side
+**Decision:** keys live in `GROQ_API_KEYS` and are added by a Vite middleware (`server/groqProxy.ts`), not read in the browser. **Why:** `VITE_*` variables are inlined into the client bundle, exposing keys to anyone who opens DevTools. **Revisit if:** deploying publicly, which needs a real backend.

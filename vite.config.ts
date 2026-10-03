@@ -1,19 +1,13 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { groqProxy } from './server/groqProxy'
 
-// The browser talks to /ollama on its own origin; Vite forwards to the local
-// Ollama server, which sidesteps CORS (no OLLAMA_ORIGINS setup needed).
-const ollama = {
-  '/ollama': {
-    target: process.env.OLLAMA_URL ?? 'http://localhost:11434',
-    changeOrigin: true,
-    rewrite: (p: string) => p.replace(/^\/ollama/, ''),
-  },
-}
-
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  server: { proxy: ollama },
-  preview: { proxy: ollama },
+export default defineConfig(({ mode }) => {
+  // '' prefix: read non-VITE_ vars so the keys stay server-side and never enter the client bundle.
+  const env = loadEnv(mode, process.cwd(), '')
+  const keys = (env.GROQ_API_KEYS ?? '').split(',').map((k) => k.trim()).filter(Boolean)
+  return {
+    plugins: [react(), tailwindcss(), groqProxy(keys, env.GROQ_BASE_URL)],
+  }
 })
