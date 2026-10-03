@@ -20,3 +20,6 @@ The Vite dev server proxies `/ollama` → `http://localhost:11434` (override wit
 - `src/lib/generate.ts` – exports the selection as a downscaled PNG, creates a placeholder shape, streams HTML into it.
 - `src/shapes/HtmlShape.tsx` – custom tldraw shape; renders output in a sandboxed iframe with Tailwind's browser build
   inlined. Double-click the shape to interact with it.
+
+## Docs
+See [`docs/`](docs/README.md) for the overview, architecture, decisions, roadmap and development guide.
