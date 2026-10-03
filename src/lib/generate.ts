@@ -58,11 +58,13 @@ export async function generateComponent(editor: Editor, providerId: string, mode
         }
       },
     })
-    editor.updateShape({
-      id,
-      type: 'html-component',
-      props: { html: extractHtml(full), status: 'done' },
-    })
+    console.debug('[canvas-ai] raw model output:', full)
+    const html = extractHtml(full)
+    if (!/<[a-z]/i.test(html)) {
+      const reply = full.trim().slice(0, 300)
+      throw new Error(reply ? `Model returned no HTML: "${reply}"` : 'Model returned an empty response.')
+    }
+    editor.updateShape({ id, type: 'html-component', props: { html, status: 'done' } })
   } catch (e) {
     const aborted = (e as Error).name === 'AbortError'
     editor.updateShape({
