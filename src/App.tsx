@@ -55,6 +55,7 @@ const Toolbar = track(function Toolbar({ editor }: { editor: Editor }) {
       .listModels(ctl.signal)
       .then((m) => {
         setError('')
+        if (m.length === 0) setError('This provider returned no models for your key.')
         setModels(m)
         const saved = store.get(`model:${providerId}`)
         setModel(m.includes(saved) ? saved : (m[0] ?? ''))

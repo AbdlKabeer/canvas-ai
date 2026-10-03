@@ -4,6 +4,11 @@ import type { Provider } from './types'
 
 const LABEL = 'Google'
 const base = proxy('google')
+const PREFERRED = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash']
+const rank = (id: string) => {
+  const i = PREFERRED.indexOf(id)
+  return i === -1 ? PREFERRED.length : i
+}
 
 export const google: Provider = {
   id: 'google',
@@ -16,8 +21,9 @@ export const google: Provider = {
     return data.models
       .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
       .map((m) => m.name.replace(/^models\//, ''))
-      .filter((id) => id.startsWith('gemini') && !/embedding|tts|image|live|audio/.test(id))
+      .filter((id) => id.startsWith('gemini') && !/embedding|tts|image|live|audio|computer-use|robotics/.test(id))
       .sort()
+      .sort((a, b) => rank(a) - rank(b))
   },
   async generate({ imageBase64, model, signal, onToken }) {
     const res = await postStream(LABEL, `${base}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
