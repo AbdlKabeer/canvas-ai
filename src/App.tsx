@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Editor, Tldraw, track } from 'tldraw'
 import { HtmlShapeUtil } from './shapes/HtmlShape'
-import { DEFAULT_MODEL, listModels } from './lib/ollama'
+import { DEFAULT_MODEL, listModels } from './lib/groq'
 import { generateComponent } from './lib/generate'
 
 const shapeUtils = [HtmlShapeUtil]
@@ -19,7 +19,7 @@ const Toolbar = track(function Toolbar({ editor }: { editor: Editor }) {
         setModels(m)
         if (m.length && !m.includes(DEFAULT_MODEL)) setModel(m[0])
       })
-      .catch(() => setError('Cannot reach Ollama at localhost:11434. Is it running?'))
+      .catch((e) => setError((e as Error).message))
   }, [])
 
   const hasSelection = editor.getSelectedShapeIds().length > 0

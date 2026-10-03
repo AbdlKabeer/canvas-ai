@@ -1,5 +1,5 @@
 import { Editor, TLShapeId, createShapeId } from 'tldraw'
-import { extractHtml, generateFromImage } from './ollama'
+import { extractHtml, generateFromImage } from './groq'
 
 const MAX_EDGE = 1024
 
