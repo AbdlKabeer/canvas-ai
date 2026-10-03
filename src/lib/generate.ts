@@ -1,5 +1,6 @@
 import { Editor, TLShapeId, createShapeId } from 'tldraw'
-import { extractHtml, generateFromImage } from './groq'
+import { extractHtml } from './prompt'
+import { getProvider } from './providers'
 
 const MAX_EDGE = 1024
 
@@ -24,7 +25,7 @@ async function pickScale(editor: Editor, ids: TLShapeId[]) {
   return Math.min(1, MAX_EDGE / Math.max(bounds.w, bounds.h))
 }
 
-export async function generateComponent(editor: Editor, model: string, signal: AbortSignal) {
+export async function generateComponent(editor: Editor, providerId: string, model: string, signal: AbortSignal) {
   const ids = editor.getSelectedShapeIds()
   if (ids.length === 0) throw new Error('Select a sketch first.')
   const bounds = editor.getSelectionPageBounds()!
@@ -45,7 +46,7 @@ export async function generateComponent(editor: Editor, model: string, signal: A
   const push = (html: string) => editor.updateShape({ id, type: 'html-component', props: { html } })
 
   try {
-    const full = await generateFromImage({
+    const full = await getProvider(providerId).generate({
       imageBase64: base64,
       model,
       signal,
